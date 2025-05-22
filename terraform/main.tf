@@ -2,7 +2,7 @@ resource "aws_instance" "devops_project_instance" {
   ami                  = terraform.workspace != "default" ? lookup(var.aws_ami_ids, terraform.workspace) : data.aws_ami.al2023.id
   instance_type        = var.ec2_instance_types[terraform.workspace]
   count                = var.instance_count
-  iam_instance_profile = "devops-proj-prf-iam"
+  iam_instance_profile = "EC2FullAccess"
   key_name             = var.ssh_key_name
   vpc_security_group_ids = [aws_security_group.devops-project-sg.id]
   
