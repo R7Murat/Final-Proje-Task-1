@@ -1,47 +1,20 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-
-data "aws_ami" "latest_amazon_linux" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["al2023-ami-2023*-kernel-6.1-x86_64"]
-  }
-}
-
-resource "aws_instance" "app_server" {
-  ami           = data.aws_ami.latest_amazon_linux.id
-  instance_type = var.env_config[terraform.workspace].instance_type
-  count         = var.instance_count
-  key_name      = "${terraform.workspace}-key"
-
+resource "aws_instance" "devops_project_instance" {
+  ami                  = terraform.workspace != "default" ? lookup(var.aws_ami_ids, terraform.workspace) : data.aws_ami.al2023.id
+  instance_type        = var.ec2_instance_types[terraform.workspace]
+  count                = var.instance_count
+  iam_instance_profile = "devops-proj-prf-iam"
+  key_name             = var.ssh_key_name
+  vpc_security_group_ids = [aws_security_group.devops-project-sg.id]
+  
   tags = {
-    Name        = "${terraform.workspace}-server-${count.index}"
-    Environment = terraform.workspace
-    ManagedBy   = "Terraform"
+    Project = "Devops-Proje-Server"
+    Name    = "${terraform.workspace}_server"
   }
-
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
 }
 
-resource "aws_security_group" "app_sg" {
-  name        = "${terraform.workspace}-sg"
-  description = "Security group for ${terraform.workspace} environment"
-
+resource "aws_security_group" "devops-project-sg" {
   dynamic "ingress" {
-    for_each = var.env_config[terraform.workspace].ports
+    for_each = lookup(var.security_group_ports, terraform.workspace)
     content {
       from_port   = ingress.value
       to_port     = ingress.value
@@ -49,11 +22,5 @@ resource "aws_security_group" "app_sg" {
       cidr_blocks = ["0.0.0.0/0"]
     }
   }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ... diğer ayarlar aynı kalacak ...
 }
